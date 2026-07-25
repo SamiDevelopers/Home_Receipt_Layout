@@ -789,6 +789,19 @@
                 color: #000;
             }
         }
+
+        /* ----- تنسيق خاص للبيان غير الصيانة الشهرية ----- */
+        .quick-settings .template-hint {
+            font-size: 12px;
+            color: var(--text-light);
+            background: var(--bg);
+            padding: 4px 12px;
+            border-radius: 6px;
+            border: 1px dashed var(--border);
+        }
+        .quick-settings .template-hint strong {
+            color: var(--primary);
+        }
     </style>
 </head>
 <body>
@@ -832,18 +845,19 @@
             <div>
                 <label>نوع الإيصال</label>
                 <select id="templateSelect" onchange="onTemplateChange()">
-                    <option value="إيصال الصيانة الشهرية">ايصال الصيانة الشهرية</option>
-                    <option value="إيصال الكهرباء">كهرباء</option>
-                    <option value="إيصال المياه">مياه</option>
-                    <option value="حل مشكلة المياه">حل مشكلة المياه</option>
-                    <option value="تغيير موتور">تغيير موتور</option>
-                    <option value="تغيير طلمبة">ايصال تغيير قطع غيار الأسانسير</option>
-                    <option value="تغيير كابل أسانسير">تغيير كابل أسانسير</option>
-                    <option value="إيصال الدهانات">دهانات</option>
-                    <option value="تركيب كاميرات">تركيب كاميرات</option>
-                    <option value="إصلاح السطح">إصلاح السطح</option>
-                    <option value="إيصال رسوم أخرى">أخرى</option>
+                    <option value="monthly">صيانة شهرية</option>
+                    <option value="electricity">كهرباء</option>
+                    <option value="water">مياه</option>
+                    <option value="water_fix">حل مشكلة المياه</option>
+                    <option value="motor">تغيير موتور</option>
+                    <option value="pump">تغيير طلمبة</option>
+                    <option value="cable">تغيير كابل أسانسير</option>
+                    <option value="paint">دهانات</option>
+                    <option value="cameras">تركيب كاميرات</option>
+                    <option value="roof">إصلاح السطح</option>
+                    <option value="other">أخرى</option>
                 </select>
+                <span class="template-hint" id="templateHint">📌 <strong>صيانة شهرية:</strong> يتم إضافة نقاط الأسانسير تلقائياً</span>
             </div>
             <div>
                 <label>شهر</label>
@@ -871,7 +885,7 @@
                 <span>⚙️ رسوم:</span>
                 <label>مالك+أسانسير</label>
                 <input type="number" id="feeOwnerElevator" value="170" onchange="saveFees()" />
-                <label>مالك بدون أسانسير</label>
+                <label>مالك-أسانسير</label>
                 <input type="number" id="feeOwnerNoElevator" value="150" onchange="saveFees()" />
                 <label>مستأجر</label>
                 <input type="number" id="feeTenant" value="220" onchange="saveFees()" />
@@ -1177,6 +1191,7 @@
         let selectedIds = new Set();
         let editingId = null;
         let darkMode = false;
+        let currentTemplate = 'monthly';
 
         // ----- التهيئة -----
         function init() {
@@ -1200,6 +1215,8 @@
             document.getElementById('searchInput').addEventListener('input', render);
             document.getElementById('filterSelect').addEventListener('change', render);
             document.getElementById('importFile').addEventListener('change', importJSON);
+            // تهيئة القالب
+            onTemplateChange();
         }
 
         // ----- حفظ البيانات -----
@@ -1298,10 +1315,77 @@
             alert('✅ تم تطبيق المبلغ على ' + checked.length + ' وحدة');
         }
 
+        // ----- تغيير نوع الإيصال -----
         function onTemplateChange() {
             const sel = document.getElementById('templateSelect').value;
+            currentTemplate = sel;
             const stmt = document.getElementById('receiptStatement');
-            stmt.value = sel;
+            const items = document.getElementById('receiptItems');
+            const hint = document.getElementById('templateHint');
+
+            // تعيين العناوين والبيانات حسب النوع
+            const templates = {
+                monthly: {
+                    title: 'إيصال الصيانة الشهرية',
+                    items: 'إيصال الكهرباء الشهري\nإيصال الصيانة الشهرية للاسانسير\nصيانة العقار العامة',
+                    hint: '📌 <strong>صيانة شهرية:</strong> يتم إضافة نقاط الأسانسير تلقائياً'
+                },
+                electricity: {
+                    title: 'إيصال الكهرباء',
+                    items: 'قيمة استهلاك الكهرباء للشهر الحالي',
+                    hint: '📌 <strong>كهرباء:</strong> يتم استخدام النقاط المدخلة فقط'
+                },
+                water: {
+                    title: 'إيصال المياه',
+                    items: 'قيمة استهلاك المياه للشهر الحالي',
+                    hint: '📌 <strong>مياه:</strong> يتم استخدام النقاط المدخلة فقط'
+                },
+                water_fix: {
+                    title: 'حل مشكلة المياه',
+                    items: 'إزالة جميع المواتير وتركيب شبكة توزيع جديدة تعتمد على 2 ماتور فقط\n• إزالة جميع المواتير القديمة\n• تركيب شبكة توزيع جديدة تعتمد على 2 موتور فقط\n• تكلفة جميع الخامات والمستلزمات\n• مصنعية التركيب',
+                    hint: '📌 <strong>حل مشكلة المياه:</strong> يتم استخدام النقاط المدخلة فقط'
+                },
+                motor: {
+                    title: 'تغيير موتور',
+                    items: 'تغيير موتور الأسانسير\n• تكلفة الموتور الجديد\n• مصنعية التركيب',
+                    hint: '📌 <strong>تغيير موتور:</strong> يتم استخدام النقاط المدخلة فقط'
+                },
+                pump: {
+                    title: 'تغيير طلمبة',
+                    items: 'تغيير طلمبة المياه\n• تكلفة الطلمبة الجديدة\n• مصنعية التركيب',
+                    hint: '📌 <strong>تغيير طلمبة:</strong> يتم استخدام النقاط المدخلة فقط'
+                },
+                cable: {
+                    title: 'تغيير كابل أسانسير',
+                    items: 'تغيير كابل الأسانسير\n• تكلفة الكابل الجديد\n• مصنعية التركيب',
+                    hint: '📌 <strong>تغيير كابل:</strong> يتم استخدام النقاط المدخلة فقط'
+                },
+                paint: {
+                    title: 'إيصال الدهانات',
+                    items: 'أعمال الدهانات للعقار\n• دهانات الواجهة الخارجية\n• دهانات الممرات والسلالم',
+                    hint: '📌 <strong>دهانات:</strong> يتم استخدام النقاط المدخلة فقط'
+                },
+                cameras: {
+                    title: 'تركيب كاميرات',
+                    items: 'تركيب كاميرات مراقبة للعقار\n• تكلفة الكاميرات\n• مصنعية التركيب',
+                    hint: '📌 <strong>كاميرات:</strong> يتم استخدام النقاط المدخلة فقط'
+                },
+                roof: {
+                    title: 'إصلاح السطح',
+                    items: 'أعمال إصلاح سطح العقار\n• عزل السطح\n• إصلاح التسريبات',
+                    hint: '📌 <strong>إصلاح السطح:</strong> يتم استخدام النقاط المدخلة فقط'
+                },
+                other: {
+                    title: 'إيصال رسوم أخرى',
+                    items: 'رسوم أخرى للعقار',
+                    hint: '📌 <strong>أخرى:</strong> يتم استخدام النقاط المدخلة فقط'
+                }
+            };
+
+            const t = templates[sel] || templates.monthly;
+            stmt.value = t.title;
+            items.value = t.items;
+            hint.innerHTML = t.hint;
         }
 
         function selectAll() {
@@ -1561,7 +1645,8 @@
             const buildingName = document.getElementById('setBuildingName').value || 'ملاك برج مريم';
             const buildingAddr = document.getElementById('setBuildingAddress').value || '31 ش الأمراء التعاون - فيصل';
             const today = new Date().toLocaleDateString('ar-EG');
-            const receiptType = document.getElementById('templateSelect').value || 'إيصال الصيانة الشهرية';
+            const receiptType = document.getElementById('templateSelect').value;
+            const receiptTypeDisplay = document.getElementById('receiptStatement').value || 'إيصال الصيانة الشهرية';
             const typeLabel = unit.type || '—';
             const statusLabel = unit.status || '—';
             const elevLabel = unit.elevator === 'yes' ? '✅ يستخدم الأسانسير' : '❌ لا يستخدم الأسانسير';
@@ -1569,32 +1654,42 @@
             // البيان الرئيسي
             let statement = document.getElementById('receiptStatement').value || 'إيصال الصيانة الشهرية';
 
-            // معالجة نقاط البيان
+            // معالجة نقاط البيان - نأخذ النقاط المدخلة كما هي
             let itemsText = document.getElementById('receiptItems').value || '';
             let items = itemsText.split('\n').filter(line => line.trim() !== '');
 
-            // إذا كان لا يستخدم الأسانسير، نحذف نقطة "إيصال الصيانة الشهرية للاسانسير"
-            if (unit.elevator === 'no') {
-                items = items.filter(item =>
-                    !item.includes('الاسانسير') &&
-                    !item.includes('أسانسير') &&
-                    !item.includes('المصعد') &&
-                    !item.includes('اسانسير')
-                );
-                if (items.length === 0) {
-                    items = ['إيصال الكهرباء الشهري', 'صيانة العقار العامة'];
+            // إذا كان نوع الإيصال هو "صيانة شهرية" فقط نقوم بمعالجة نقاط الأسانسير
+            if (receiptType === 'monthly') {
+                // إذا كان لا يستخدم الأسانسير، نحذف نقطة "إيصال الصيانة الشهرية للاسانسير"
+                if (unit.elevator === 'no') {
+                    items = items.filter(item =>
+                        !item.includes('الاسانسير') &&
+                        !item.includes('أسانسير') &&
+                        !item.includes('المصعد') &&
+                        !item.includes('اسانسير')
+                    );
+                    if (items.length === 0) {
+                        items = ['إيصال الكهرباء الشهري', 'صيانة العقار العامة'];
+                    }
+                } else {
+                    // إذا كان يستخدم الأسانسير، نتأكد من وجود نقطة "إيصال الصيانة الشهرية للاسانسير"
+                    const hasElevatorItem = items.some(item =>
+                        item.includes('الاسانسير') ||
+                        item.includes('أسانسير') ||
+                        item.includes('المصعد') ||
+                        item.includes('اسانسير')
+                    );
+                    if (!hasElevatorItem && items.length > 0) {
+                        items.unshift('إيصال الصيانة الشهرية للاسانسير');
+                    } else if (items.length === 0) {
+                        items = ['إيصال الكهرباء الشهري', 'إيصال الصيانة الشهرية للاسانسير', 'صيانة العقار العامة'];
+                    }
                 }
             } else {
-                const hasElevatorItem = items.some(item =>
-                    item.includes('الاسانسير') ||
-                    item.includes('أسانسير') ||
-                    item.includes('المصعد') ||
-                    item.includes('اسانسير')
-                );
-                if (!hasElevatorItem && items.length > 0) {
-                    items.unshift('إيصال الصيانة الشهرية للاسانسير');
-                } else if (items.length === 0) {
-                    items = ['إيصال الكهرباء الشهري', 'إيصال الصيانة الشهرية للاسانسير', 'صيانة العقار العامة'];
+                // لجميع الأنواع الأخرى - نستخدم النقاط المدخلة كما هي دون تعديل
+                // إذا كانت القائمة فارغة، نضيف النقاط الافتراضية
+                if (items.length === 0) {
+                    items = ['قيمة الخدمة المطلوبة'];
                 }
             }
 
@@ -1621,7 +1716,7 @@
                         <div class="r-header">
                             <div class="r-building">🏢 ${buildingName}</div>
                             <div class="r-address">${buildingAddr}</div>
-                            <div class="r-receipt-type">${receiptType}</div>
+                            <div class="r-receipt-type">${statement}</div>
                         </div>
                         <div class="r-body">
                             <div class="r-row">
@@ -1816,10 +1911,12 @@
             document.getElementById('receiptStatement').value = 'إيصال الصيانة الشهرية';
             document.getElementById('receiptItems').value = 'إيصال الكهرباء الشهري\nإيصال الصيانة الشهرية للاسانسير\nصيانة العقار العامة';
             document.getElementById('receiptNote').value = 'ملاحظة: يرجى السداد قبل نهاية الشهر';
+            document.getElementById('templateSelect').value = 'monthly';
             updateHeader();
             saveData();
             render();
             updateStats();
+            onTemplateChange();
             alert('✅ تم إعادة ضبط البيانات');
         }
 
@@ -1856,8 +1953,8 @@
         console.log('🏢 نظام إدارة وطباعة إيصالات العقار');
         console.log('📦 عدد الوحدات:', units.length);
         console.log('💾 البيانات محفوظة في LocalStorage');
-        console.log('🔍 تم إضافة فلتر: كاش (Chash) فقط / أونلاين (On-line) فقط');
-        console.log('📝 تم تحديث بيانات طريقة الدفع لجميع الوحدات حسب الجدول');
+        console.log('📝 نقاط البيان: تظهر المدخلات فقط لجميع الأنواع ما عدا "صيانة شهرية"');
+        console.log('🔍 فلتر الطباعة: كاش (Chash) / أونلاين (On-line)');
     </script>
 
 </body>
